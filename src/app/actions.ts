@@ -7,7 +7,7 @@ import { slugify } from '@/lib/format';
 
 // ── Profile ──────────────────────────────────────────────────────
 
-export async function completeProfile(formData: FormData) {
+export async function completeProfile(formData: FormData): Promise<void> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
@@ -19,16 +19,16 @@ export async function completeProfile(formData: FormData) {
     const country = String(formData.get('country') ?? '').trim() || null;
     const bio = String(formData.get('bio') ?? '').trim() || null;
 
-    if (display_name.length < 2) return { error: 'Ingresá un nombre válido' };
-    if (!/^[a-z0-9_]{3,24}$/.test(handle)) return { error: 'Handle inválido (3-24 chars, letras/números/_)' };
+    if (display_name.length < 2) redirect('/onboarding?error=Ingresá+un+nombre+válido');
+    if (!/^[a-z0-9_]{3,24}$/.test(handle)) redirect('/onboarding?error=Handle+inválido');
 
     const { error } = await supabase
         .from('profiles')
         .upsert({ user_id: user.id, display_name, handle, specialty, country, bio });
 
     if (error) {
-        if (error.code === '23505') return { error: 'Ese handle ya está en uso' };
-        return { error: error.message };
+        const msg = error.code === '23505' ? 'Ese handle ya está en uso' : error.message;
+        redirect(`/onboarding?error=${encodeURIComponent(msg)}`);
     }
 
     revalidatePath('/', 'layout');
@@ -37,7 +37,7 @@ export async function completeProfile(formData: FormData) {
 
 // ── Posts ────────────────────────────────────────────────────────
 
-export async function createPost(formData: FormData) {
+export async function createPost(formData: FormData): Promise<void> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
@@ -46,9 +46,9 @@ export async function createPost(formData: FormData) {
     const body = String(formData.get('body') ?? '').trim();
     const category_slug = String(formData.get('category_slug') ?? '').trim();
 
-    if (title.length < 4 || title.length > 200) return { error: 'El título debe tener entre 4 y 200 caracteres' };
-    if (body.length < 1 || body.length > 20000) return { error: 'El cuerpo no puede estar vacío' };
-    if (!category_slug) return { error: 'Seleccioná una categoría' };
+    if (title.length < 4 || title.length > 200) redirect('/new?error=Título+entre+4+y+200+caracteres');
+    if (body.length < 1 || body.length > 20000) redirect('/new?error=El+cuerpo+no+puede+estar+vacío');
+    if (!category_slug) redirect('/new?error=Seleccioná+una+categoría');
 
     const { data, error } = await supabase
         .from('posts')
@@ -56,36 +56,34 @@ export async function createPost(formData: FormData) {
         .select('id')
         .single();
 
-    if (error) return { error: error.message };
+    if (error) redirect(`/new?error=${encodeURIComponent(error.message)}`);
 
     revalidatePath('/');
     revalidatePath(`/c/${category_slug}`);
-    redirect(`/p/${data.id}`);
+    redirect(`/p/${data!.id}`);
 }
 
 // ── Comments ─────────────────────────────────────────────────────
 
-export async function createComment(postId: string, formData: FormData) {
+export async function createComment(formData: FormData): Promise<void> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 
+    const postId = String(formData.get('post_id') ?? '');
     const body = String(formData.get('body') ?? '').trim();
-    if (!body) return { error: 'El comentario no puede estar vacío' };
+    if (!postId || !body) return;
 
-    const { error } = await supabase
+    await supabase
         .from('comments')
         .insert({ post_id: postId, author_id: user.id, body });
 
-    if (error) return { error: error.message };
-
     revalidatePath(`/p/${postId}`);
-    return { ok: true };
 }
 
 // ── Likes ────────────────────────────────────────────────────────
 
-export async function toggleLike(postId: string) {
+export async function toggleLike(postId: string): Promise<{ liked: boolean }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
@@ -110,16 +108,15 @@ export async function toggleLike(postId: string) {
 
 // ── Auth ─────────────────────────────────────────────────────────
 
-export async function signInWithPassword(formData: FormData) {
+export async function signInWithPassword(formData: FormData): Promise<void> {
     const supabase = await createClient();
     const email = String(formData.get('email') ?? '').trim().toLowerCase();
     const password = String(formData.get('password') ?? '');
     const next = String(formData.get('next') ?? '/');
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: 'Email o contraseña incorrectos' };
+    if (error) redirect(`/login?error=${encodeURIComponent('Email o contraseña incorrectos')}&next=${encodeURIComponent(next)}`);
 
-    // If the user doesn't have a community profile yet, force onboarding.
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         const { data: profile } = await supabase
@@ -133,7 +130,7 @@ export async function signInWithPassword(formData: FormData) {
     redirect(next);
 }
 
-export async function signOut() {
+export async function signOut(): Promise<void> {
     const supabase = await createClient();
     await supabase.auth.signOut();
     redirect('/');
