@@ -1,9 +1,20 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { fetchCategories } from '@/lib/queries';
-import { createPost } from '@/app/actions';
+import { NewPostForm } from '@/components/NewPostForm';
 
 export const dynamic = 'force-dynamic';
+
+const HEADINGS: Record<string, { title: string; subtitle: string }> = {
+    presentaciones: {
+        title: 'Presentate a la comunidad',
+        subtitle: 'Contanos quién sos, de dónde venís y qué hacés. Conocé colegas latinos.',
+    },
+    'casos-clinicos': {
+        title: 'Compartí un caso clínico',
+        subtitle: 'Pedí segunda opinión, mostrá un caso resuelto o abrí un debate clínico.',
+    },
+};
 
 export default async function NewPostPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
     const { category } = await searchParams;
@@ -13,72 +24,20 @@ export default async function NewPostPage({ searchParams }: { searchParams: Prom
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('user_id')
+        .select('user_id, role')
         .eq('user_id', user.id)
         .maybeSingle();
     if (!profile) redirect('/onboarding');
 
     const categories = await fetchCategories(supabase);
+    const isAdmin = profile.role === 'admin' || profile.role === 'moderator';
+    const h = category ? HEADINGS[category] : undefined;
 
     return (
-        <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 p-6">
-            <h1 className="text-xl font-bold text-slate-900 mb-4">Nuevo post</h1>
-
-            <form action={createPost} className="space-y-4">
-                <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Categoría</label>
-                    <select
-                        name="category_slug"
-                        defaultValue={category ?? categories[0]?.slug}
-                        required
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    >
-                        {categories.map((c) => (
-                            <option key={c.slug} value={c.slug}>{c.name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Título</label>
-                    <input
-                        name="title"
-                        required
-                        minLength={4}
-                        maxLength={200}
-                        placeholder="¿Cómo resolverías este caso?"
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Contenido</label>
-                    <textarea
-                        name="body"
-                        required
-                        minLength={1}
-                        maxLength={20000}
-                        rows={12}
-                        placeholder="Compartí el caso, tu duda, tu experiencia… (Markdown básico soportado)"
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-y"
-                    />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                    <a
-                        href="/"
-                        className="px-4 py-2 text-sm text-slate-600 font-semibold hover:text-slate-900"
-                    >
-                        Cancelar
-                    </a>
-                    <button
-                        type="submit"
-                        className="bg-primary text-white font-semibold px-5 py-2 rounded-lg hover:bg-primary-700 transition"
-                    >
-                        Publicar
-                    </button>
-                </div>
-            </form>
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h1 className="text-2xl font-extrabold text-slate-900 mb-1">{h?.title ?? 'Nuevo post'}</h1>
+            <p className="text-sm text-slate-500 mb-6">{h?.subtitle ?? 'Compartí con la comunidad DentalCore.'}</p>
+            <NewPostForm categories={categories} isAdmin={isAdmin} initialCategory={category} userId={user.id} />
         </div>
     );
 }

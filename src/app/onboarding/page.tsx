@@ -19,8 +19,30 @@ export default async function OnboardingPage() {
         .maybeSingle();
     if (existing) redirect('/');
 
+    // Show step indicator
+
     return (
         <div className="max-w-lg mx-auto bg-white rounded-2xl border border-slate-200 p-8 mt-4">
+            {/* Progress steps */}
+            <div className="flex items-center gap-2 mb-6">
+                <div className="flex items-center gap-1.5">
+                    <span className="size-6 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[14px]">check</span>
+                    </span>
+                    <span className="text-xs text-emerald-600 font-semibold">Normas</span>
+                </div>
+                <div className="flex-1 h-px bg-slate-200" />
+                <div className="flex items-center gap-1.5">
+                    <span className="size-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">2</span>
+                    <span className="text-xs text-primary font-semibold">Perfil</span>
+                </div>
+                <div className="flex-1 h-px bg-slate-200" />
+                <div className="flex items-center gap-1.5">
+                    <span className="size-6 rounded-full bg-slate-200 text-slate-500 text-xs font-bold flex items-center justify-center">3</span>
+                    <span className="text-xs text-slate-400 font-semibold">Listo</span>
+                </div>
+            </div>
+
             <h1 className="text-xl font-bold text-slate-900 mb-1">Completá tu perfil</h1>
             <p className="text-sm text-slate-500 mb-6">
                 Estos datos son públicos dentro de la comunidad. Podés editarlos cuando quieras.

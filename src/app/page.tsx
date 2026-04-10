@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { fetchFeed } from '@/lib/queries';
 import { PostCard } from '@/components/PostCard';
+import { NewContentToast } from '@/components/NewContentToast';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,12 @@ export default async function HomePage() {
                     </Link>
                 )}
             </div>
+
+            <NewContentToast
+                endpoint="/api/poll/feed"
+                currentCount={posts.length}
+                label="posts nuevos"
+            />
 
             {posts.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">

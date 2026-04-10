@@ -15,17 +15,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const [{ data: categories }, profileRes] = await Promise.all([
+    const [{ data: categories }, profileRes, unreadMsgRes, unreadNotifRes] = await Promise.all([
         supabase.from('categories').select('*').order('sort_order'),
         user
             ? supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle()
             : Promise.resolve({ data: null }),
+        user
+            ? supabase.from('messages').select('id', { count: 'exact', head: true }).eq('receiver_id', user.id).is('read_at', null)
+            : Promise.resolve({ count: 0 }),
+        user
+            ? supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', user.id).is('read_at', null)
+            : Promise.resolve({ count: 0 }),
     ]);
+
+    const unreadMessages = (unreadMsgRes as any)?.count ?? 0;
+    const unreadNotifications = (unreadNotifRes as any)?.count ?? 0;
 
     return (
         <html lang="es">
             <body>
-                <TopNav user={user} profile={profileRes.data} />
+                <TopNav user={user} profile={profileRes.data} unreadMessages={unreadMessages} unreadNotifications={unreadNotifications} />
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex gap-6">
                     <aside className="hidden lg:block w-60 flex-shrink-0">
                         <SidebarCategories categories={categories ?? []} />

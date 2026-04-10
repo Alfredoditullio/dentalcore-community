@@ -5,6 +5,9 @@ import { fetchPost, fetchComments } from '@/lib/queries';
 import { timeAgo, initials } from '@/lib/format';
 import { LikeButton } from '@/components/LikeButton';
 import { CommentForm } from '@/components/CommentForm';
+import { PollDisplay } from '@/components/PollDisplay';
+import { NewContentToast } from '@/components/NewContentToast';
+import type { Poll, PollVote, MarketMeta } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +17,18 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     const post = await fetchPost(supabase, id);
     if (!post) notFound();
 
-    const [{ data: { user } }, comments] = await Promise.all([
+    const [{ data: { user } }, comments, { data: pollData }] = await Promise.all([
         supabase.auth.getUser(),
         fetchComments(supabase, id),
+        supabase.from('polls').select('*').eq('post_id', id).maybeSingle(),
     ]);
+
+    const poll = pollData as Poll | null;
+    let pollVotes: PollVote[] = [];
+    if (poll) {
+        const { data } = await supabase.from('poll_votes').select('*').eq('poll_id', poll.id);
+        pollVotes = (data ?? []) as PollVote[];
+    }
 
     let userLiked = false;
     if (user) {
@@ -68,7 +79,50 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
                 </header>
 
                 <h1 className="text-2xl font-bold text-slate-900 leading-tight mb-4">{post.title}</h1>
+
+                {/* Mercado info bar */}
+                {post.category.slug === 'mercado' && post.metadata && (() => {
+                    const m = post.metadata as Partial<MarketMeta>;
+                    const listingLabels: Record<string, string> = { sell: 'Vendo', buy: 'Compro', trade: 'Permuto' };
+                    const condLabels: Record<string, string> = { new: 'Nuevo', like_new: 'Como nuevo', good: 'Buen estado', fair: 'Uso visible' };
+                    return (
+                        <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                            {m.listing_type && (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                    {listingLabels[m.listing_type] ?? m.listing_type}
+                                </span>
+                            )}
+                            {m.price ? (
+                                <span className="text-xl font-black text-emerald-700">{m.currency ?? 'USD'} {m.price}</span>
+                            ) : (
+                                <span className="text-sm font-bold text-slate-500">A convenir</span>
+                            )}
+                            {m.condition && (
+                                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                    {condLabels[m.condition] ?? m.condition}
+                                </span>
+                            )}
+                            {m.item_category && (
+                                <span className="text-xs text-slate-500">{m.item_category}</span>
+                            )}
+                            {m.location && (
+                                <span className="flex items-center gap-1 text-xs text-slate-500">
+                                    <span className="material-symbols-outlined text-[14px]">location_on</span>
+                                    {m.location}
+                                </span>
+                            )}
+                            {m.is_sold && (
+                                <span className="text-xs font-bold uppercase text-red-600 bg-red-100 px-2.5 py-1 rounded-full">Vendido</span>
+                            )}
+                        </div>
+                    );
+                })()}
+
                 <div className="prose-post">{post.body}</div>
+
+                {poll && (
+                    <PollDisplay poll={poll} votes={pollVotes} userId={user?.id ?? null} />
+                )}
 
                 <footer className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-4">
                     <LikeButton postId={post.id} initialLiked={userLiked} initialCount={post.like_count} disabled={!user} />
@@ -78,6 +132,12 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
                     </span>
                 </footer>
             </article>
+
+            <NewContentToast
+                endpoint={`/api/poll/comments?postId=${id}`}
+                currentCount={comments.length}
+                label="comentarios nuevos"
+            />
 
             <section className="bg-white rounded-xl border border-slate-200 p-6">
                 <h2 className="font-bold text-slate-900 mb-4">Comentarios</h2>

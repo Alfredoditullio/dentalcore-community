@@ -8,13 +8,13 @@ import type { Category, CommentWithAuthor, PostWithAuthor, Profile } from '@/lib
 
 export async function fetchFeed(
     supabase: SupabaseClient,
-    opts: { categorySlug?: string; limit?: number } = {}
+    opts: { categorySlug?: string; postType?: string; limit?: number } = {}
 ): Promise<PostWithAuthor[]> {
     let q = supabase
         .from('posts')
         .select(`
             *,
-            author:profiles!posts_author_id_fkey(*),
+            author:profiles!posts_author_profile_fkey(*),
             category:categories!posts_category_slug_fkey(*)
         `)
         .eq('is_deleted', false)
@@ -23,6 +23,7 @@ export async function fetchFeed(
         .limit(opts.limit ?? 30);
 
     if (opts.categorySlug) q = q.eq('category_slug', opts.categorySlug);
+    if (opts.postType) q = q.eq('post_type', opts.postType);
 
     const { data, error } = await q;
     if (error) {
@@ -40,7 +41,7 @@ export async function fetchPost(
         .from('posts')
         .select(`
             *,
-            author:profiles!posts_author_id_fkey(*),
+            author:profiles!posts_author_profile_fkey(*),
             category:categories!posts_category_slug_fkey(*)
         `)
         .eq('id', id)
@@ -59,7 +60,7 @@ export async function fetchComments(
 ): Promise<CommentWithAuthor[]> {
     const { data, error } = await supabase
         .from('comments')
-        .select(`*, author:profiles!comments_author_id_fkey(*)`)
+        .select(`*, author:profiles!comments_author_profile_fkey(*)`)
         .eq('post_id', postId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true });
