@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath: '/comunidad',
   reactStrictMode: true,
   images: {
     remotePatterns: [

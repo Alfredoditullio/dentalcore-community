@@ -10,7 +10,8 @@ export function NotificationBell({ initialCount }: { initialCount: number }) {
     useEffect(() => {
         const poll = async () => {
             try {
-                const res = await fetch('/api/notifications/count');
+                const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+                const res = await fetch(`${base}/api/notifications/count`);
                 if (res.ok) {
                     const data = await res.json();
                     setCount(data.count);

@@ -27,7 +27,8 @@ export function NewContentToast({ endpoint, currentCount, label }: NewContentToa
     useEffect(() => {
         const poll = async () => {
             try {
-                const res = await fetch(endpoint);
+                const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+                const res = await fetch(`${base}${endpoint}`);
                 if (res.ok) {
                     const data = await res.json();
                     const diff = data.count - currentCount;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { createPost, createPostWithPoll } from '@/app/actions';
 import { createClient } from '@/lib/supabase/client';
 import type { Category } from '@/lib/types';
@@ -194,9 +195,9 @@ export function NewPostForm({
                             <div className="text-xs text-slate-500 mt-0.5">{selectedCategory.description}</div>
                         )}
                     </div>
-                    <a href="/new" className="text-xs text-slate-500 hover:text-slate-700 font-semibold shrink-0">
+                    <Link href="/new" className="text-xs text-slate-500 hover:text-slate-700 font-semibold shrink-0">
                         Cambiar
-                    </a>
+                    </Link>
                 </div>
             ) : (
                 <div>
@@ -436,9 +437,9 @@ export function NewPostForm({
             {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-                <a href="/" className="px-4 py-2 text-sm text-slate-600 font-semibold hover:text-slate-900">
+                <Link href="/" className="px-4 py-2 text-sm text-slate-600 font-semibold hover:text-slate-900">
                     Cancelar
-                </a>
+                </Link>
                 <button
                     type="submit"
                     disabled={!canPost || uploading || isPending}
